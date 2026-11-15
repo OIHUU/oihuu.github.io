@@ -1,7 +1,2362 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="OIHUU 的个人主页 —— 使用用户名和密码登录后查看个人主页。">
+<meta name="theme-color" content="#f6f8fa">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iOCIgZmlsbD0iIzFmMjMyOCIvPjxjaXJjbGUgY3g9IjE2IiBjeT0iMTYiIHI9IjgiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2Y2ZjhmYSIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+">
+<title>登录 · 个人网站</title>
+
+<!-- 在页面渲染前根据本地设置应用主题、归一化路由，避免闪烁 -->
+<script>
+(function () {
+  try {
+    var THEME_KEY = "oihuu.theme.v1";
+    var SESSION_KEY = "oihuu.session.v1";
+    var theme = localStorage.getItem(THEME_KEY);
+    if (theme !== "light" && theme !== "dark") {
+      theme = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+    document.documentElement.style.colorScheme = theme;
+
+    var loggedIn = false;
+    try {
+      var session = localStorage.getItem(SESSION_KEY);
+      var parsed = session ? JSON.parse(session) : null;
+      loggedIn = !!(parsed && parsed.username);
+    } catch (e) { loggedIn = false; }
+
+    var hash = (location.hash || "").replace(/^#\/?/, "").toLowerCase();
+    if (!hash) {
+      location.replace("#/" + (loggedIn ? "home" : "signin"));
+    } else if (hash === "home" && !loggedIn) {
+      location.replace("#/signin");
+    } else if ((hash === "signin" || hash === "signup") && loggedIn) {
+      location.replace("#/home");
+    }
+  } catch (e) { /* localStorage 不可用时忽略 */ }
+})();
+</script>
+
+<style>
+/* ============================================================================
+   1. 设计变量（浅色 / 深色主题）
+   ========================================================================== */
+:root {
+  color-scheme: light;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  --bg-page: #f6f8fa;
+  --bg-canvas: #ffffff;
+  --bg-subtle: #f6f8fa;
+  --bg-inset: #eff2f5;
+  --border-default: #d0d7de;
+  --border-muted: #d8dee4;
+  --fg-default: #1f2328;
+  --fg-muted: #59636e;
+  --fg-subtle: #6e7781;
+  --accent: #0969da;
+  --accent-subtle: #ddf4ff;
+  --success: #1a7f37;
+  --success-emphasis: #2da44e;
+  --success-hover: #2c974b;
+  --danger: #cf222e;
+  --danger-bg: #ffebe9;
+  --danger-border: rgba(255, 129, 130, 0.4);
+  --attention: #9a6700;
+  --tab-underline: #fd8c73;
+
+  --header-bg: #24292f;
+  --header-fg: #f0f6fc;
+  --header-muted: #8b949e;
+  --header-border: #30363d;
+  --header-border-strong: #57606a;
+  --header-hover: rgba(255, 255, 255, 0.08);
+
+  --btn-bg: #f6f8fa;
+  --btn-hover-bg: #eef1f4;
+  --btn-border: rgba(31, 35, 40, 0.15);
+  --input-bg: #ffffff;
+  --input-shadow: inset 0 1px 0 rgba(208, 215, 222, 0.2);
+  --focus-ring: rgba(9, 105, 218, 0.3);
+  --danger-ring: rgba(207, 34, 46, 0.3);
+
+  --shadow-sm: 0 1px 0 rgba(31, 35, 40, 0.04);
+  --shadow-md: 0 3px 6px rgba(140, 149, 159, 0.15);
+  --shadow-lg: 0 8px 24px rgba(140, 149, 159, 0.2);
+  --toast-bg: #24292f;
+  --toast-fg: #ffffff;
+
+  --banner-1: #0d1117;
+  --banner-2: #0b3d2c;
+  --banner-3: #103a5c;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-page: #0d1117;
+  --bg-canvas: #161b22;
+  --bg-subtle: #21262d;
+  --bg-inset: #21262d;
+  --border-default: #30363d;
+  --border-muted: #21262d;
+  --fg-default: #e6edf3;
+  --fg-muted: #9198a1;
+  --fg-subtle: #6e7681;
+  --accent: #2f81f7;
+  --accent-subtle: #121d2f;
+  --success: #3fb950;
+  --success-emphasis: #238636;
+  --success-hover: #2ea043;
+  --danger: #f85149;
+  --danger-bg: rgba(248, 81, 73, 0.1);
+  --danger-border: rgba(248, 81, 73, 0.4);
+  --attention: #d29922;
+  --tab-underline: #fd8c73;
+
+  --header-bg: #161b22;
+  --header-fg: #e6edf3;
+  --header-muted: #8b949e;
+  --header-border: #30363d;
+  --header-border-strong: #30363d;
+  --header-hover: rgba(255, 255, 255, 0.06);
+
+  --btn-bg: #21262d;
+  --btn-hover-bg: #30363d;
+  --btn-border: #30363d;
+  --input-bg: #0d1117;
+  --input-shadow: none;
+  --focus-ring: rgba(47, 129, 247, 0.3);
+  --danger-ring: rgba(248, 81, 73, 0.3);
+
+  --shadow-sm: 0 1px 0 rgba(1, 4, 9, 0.2);
+  --shadow-md: 0 3px 6px rgba(1, 4, 9, 0.3);
+  --shadow-lg: 0 8px 24px rgba(1, 4, 9, 0.5);
+  --toast-bg: #21262d;
+  --toast-fg: #e6edf3;
+
+  --banner-1: #010409;
+  --banner-2: #0b3d2c;
+  --banner-3: #0d2d4a;
+}
+
+/* ============================================================================
+   2. 基础样式
+   ========================================================================== */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--fg-default);
+  background: var(--bg-page);
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, p, ul, ol, dl, dd { margin: 0; }
+ul, ol { padding: 0; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button { font: inherit; color: inherit; }
+input { font: inherit; }
+[hidden] { display: none !important; }
+svg { flex: none; }
+::selection { background: rgba(9, 105, 218, 0.25); }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.svg-sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+.octicon { width: 16px; height: 16px; display: inline-block; vertical-align: text-bottom; fill: currentColor; }
+.gh-container { width: 100%; max-width: 1216px; margin: 0 auto; padding: 0 24px; }
+.link-button {
+  padding: 0; border: 0; background: none; color: var(--accent);
+  font-size: inherit; cursor: pointer; text-decoration: none;
+}
+.link-button:hover { text-decoration: underline; }
+.hint { font-size: 12px; line-height: 1.6; color: var(--fg-subtle); margin: 12px 0 0; }
+.divider { border: 0; border-top: 1px solid var(--border-muted); margin: 16px 0; }
+
+/* ============================================================================
+   3. 按钮 / 输入框 / 表单
+   ========================================================================== */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 32px; padding: 0 16px; border: 1px solid var(--btn-border); border-radius: 6px;
+  background: var(--btn-bg); color: var(--fg-default); font-size: 14px; font-weight: 500;
+  line-height: 20px; white-space: nowrap; cursor: pointer; user-select: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.btn:hover { background: var(--btn-hover-bg); }
+.btn:active { background: var(--btn-hover-bg); }
+.btn:disabled { opacity: 0.65; cursor: default; }
+.btn-block { width: 100%; }
+.btn-primary {
+  background: var(--success-emphasis);
+  border-color: rgba(27, 31, 36, 0.15);
+  color: #ffffff;
+}
+.btn-primary:hover { background: var(--success-hover); }
+.btn-primary:active { background: var(--success-hover); }
+.btn .spinner {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.45); border-top-color: #ffffff;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.form-group { margin-bottom: 16px; }
+.form-label {
+  display: block; margin-bottom: 8px;
+  font-size: 14px; font-weight: 600; color: var(--fg-default);
+}
+.label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.label-row .form-label { margin-bottom: 8px; }
+.label-row .link-button { font-size: 12px; }
+.input-wrap { position: relative; }
+.input {
+  width: 100%; height: 32px; padding: 5px 12px;
+  font-size: 14px; line-height: 20px; color: var(--fg-default);
+  background: var(--input-bg);
+  border: 1px solid var(--border-default); border-radius: 6px;
+  box-shadow: var(--input-shadow);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.input::placeholder { color: var(--fg-subtle); }
+.input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus-ring); }
+.input-wrap .input { padding-right: 40px; }
+.input-action {
+  position: absolute; top: 50%; right: 4px; transform: translateY(-50%);
+  display: grid; place-items: center; width: 24px; height: 24px;
+  padding: 0; border: 0; border-radius: 4px; background: transparent;
+  color: var(--fg-muted); cursor: pointer;
+}
+.input-action:hover { color: var(--fg-default); background: var(--bg-subtle); }
+.input-action .octicon-eye-off { display: none; }
+.input-action[aria-pressed="true"] .octicon-eye { display: none; }
+.input-action[aria-pressed="true"] .octicon-eye-off { display: inline-block; }
+.form-hint { margin: 8px 0 0; font-size: 12px; color: var(--fg-subtle); line-height: 1.5; }
+.field-error {
+  display: flex; align-items: flex-start; gap: 6px;
+  margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--danger);
+}
+.form-group.has-error .input { border-color: var(--danger); }
+.form-group.has-error .input:focus { box-shadow: 0 0 0 3px var(--danger-ring); }
+.legal { margin: 4px 0 16px; font-size: 12px; line-height: 1.6; color: var(--fg-subtle); }
+.legal a { color: var(--accent); }
+
+.alert {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 12px 16px; margin-bottom: 16px;
+  font-size: 14px; line-height: 1.5; color: var(--fg-default);
+  background: var(--danger-bg); border: 1px solid var(--danger-border); border-radius: 6px;
+}
+.alert .octicon { color: var(--danger); margin-top: 2px; }
+.alert-text { min-width: 0; }
+
+/* 密码强度与规则 */
+.strength { display: flex; gap: 4px; margin-top: 10px; }
+.strength[data-state="idle"] { display: none; }
+.strength-bar {
+  flex: 1; height: 4px; border-radius: 999px;
+  background: var(--bg-inset); transition: background-color 0.15s ease;
+}
+.strength-label { margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--fg-subtle); }
+.strength-label[data-state="weak"] { color: var(--danger); }
+.strength-label[data-state="fair"], .strength-label[data-state="good"] { color: var(--attention); }
+.strength-label[data-state="strong"] { color: var(--success); }
+.strength[data-state="weak"] .strength-bar.is-filled { background: var(--danger); }
+.strength[data-state="fair"] .strength-bar.is-filled { background: var(--attention); }
+.strength[data-state="good"] .strength-bar.is-filled { background: var(--attention); }
+.strength[data-state="strong"] .strength-bar.is-filled { background: var(--success-emphasis); }
+
+.rule-list { list-style: none; display: grid; gap: 4px; margin: 8px 0 0; padding: 0; }
+.rule { display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 1.5; color: var(--fg-subtle); }
+.rule-state { width: 14px; text-align: center; font-weight: 700; }
+.rule.is-ok { color: var(--success); }
+.rule.is-ok .rule-state { color: var(--success); }
+.rule.is-bad { color: var(--danger); }
+.rule.is-bad .rule-state { color: var(--danger); }
+
+/* ============================================================================
+   4. 登录 / 注册页
+   ========================================================================== */
+.auth-view { min-height: 100vh; min-height: 100dvh; background: var(--bg-page); }
+.theme-fab {
+  position: fixed; top: 16px; right: 16px; z-index: 30;
+  display: grid; place-items: center; width: 36px; height: 36px;
+  padding: 0; border: 1px solid var(--border-muted); border-radius: 50%;
+  background: var(--bg-canvas); color: var(--fg-muted); cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.theme-fab:hover { color: var(--fg-default); border-color: var(--border-default); }
+.theme-icon-sun { display: none; }
+:root[data-theme="dark"] .theme-icon-sun { display: inline-block; }
+:root[data-theme="dark"] .theme-icon-moon { display: none; }
+
+.auth-shell {
+  min-height: 100vh; min-height: 100dvh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 40px 16px;
+}
+.auth-content { width: 100%; max-width: 340px; display: flex; flex-direction: column; align-items: center; }
+.auth-title {
+  margin: 8px 0 8px; text-align: center;
+  font-size: 24px; font-weight: 600; letter-spacing: -0.3px; line-height: 1.25;
+  color: var(--fg-default);
+}
+.auth-subtitle {
+  margin: 0 0 20px; text-align: center;
+  font-size: 13px; line-height: 1.6; color: var(--fg-muted);
+}
+.auth-card {
+  width: 100%; padding: 16px;
+  background: var(--bg-canvas); border: 1px solid var(--border-muted); border-radius: 6px;
+}
+.auth-switch {
+  width: 100%; margin-top: 16px; padding: 16px;
+  border: 1px solid var(--border-muted); border-radius: 6px;
+  text-align: center; font-size: 14px; color: var(--fg-default);
+}
+.auth-footer {
+  width: 100%; max-width: 340px; margin-top: 40px;
+  text-align: center; font-size: 12px; line-height: 1.6; color: var(--fg-subtle);
+}
+.auth-footer-links {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: 4px 12px; margin: 0 0 16px; padding: 0; list-style: none;
+}
+.auth-footer-links a, .auth-footer-links button { color: var(--fg-subtle); font-size: 12px; }
+.auth-footer-links a:hover, .auth-footer-links button:hover { color: var(--accent); }
+.auth-footer-copy { margin: 0; }
+.auth-footer-copy strong { font-weight: 500; color: var(--fg-muted); }
+.noscript-note {
+  width: 100%; max-width: 340px; margin-top: 16px; padding: 12px 16px;
+  border: 1px solid var(--border-default); border-radius: 6px;
+  font-size: 13px; color: var(--danger);
+}
+
+/* ============================================================================
+   5. 站内页头（登录后的个人主页）
+   ========================================================================== */
+.global-header {
+  position: sticky; top: 0; z-index: 40;
+  background: var(--header-bg); color: var(--header-fg);
+  border-bottom: 1px solid var(--header-border);
+}
+.header-inner { display: flex; align-items: center; gap: 16px; height: 62px; }
+.header-logo {
+  display: flex; align-items: center; flex: none;
+  color: var(--header-fg); text-decoration: none;
+}
+.header-logo:hover { color: var(--header-fg); text-decoration: none; }
+.header-wordmark { font-size: 17px; font-weight: 600; letter-spacing: 0.3px; }
+
+.header-search {
+  display: flex; align-items: center; gap: 8px; flex: 0 1 280px; min-width: 0;
+  height: 30px; padding: 0 8px;
+  border: 1px solid var(--header-border-strong); border-radius: 6px;
+  background: transparent; color: var(--header-muted);
+}
+.header-search:focus-within { border-color: var(--header-muted); }
+.header-search .octicon { color: var(--header-muted); }
+.header-search-input {
+  flex: 1; min-width: 0; height: 100%;
+  border: 0; background: transparent; color: var(--header-fg);
+  font-size: 14px; outline: none;
+}
+.header-search-input::placeholder { color: var(--header-muted); }
+.header-search-input::-webkit-search-cancel-button { display: none; }
+.header-kbd {
+  flex: none; padding: 0 4px;
+  border: 1px solid var(--header-border-strong); border-radius: 4px;
+  font-family: var(--font-mono); font-size: 11px; line-height: 16px;
+  color: var(--header-muted);
+}
+
+.header-nav { display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0; }
+.header-nav-link {
+  display: inline-flex; align-items: center; height: 32px; padding: 0 10px;
+  border-radius: 6px; color: var(--header-fg); font-size: 14px; font-weight: 500;
+  text-decoration: none; white-space: nowrap;
+}
+.header-nav-link:hover { background: var(--header-hover); text-decoration: none; }
+.header-nav-link.is-active { background: var(--header-hover); }
+
+.header-actions { display: flex; align-items: center; gap: 8px; flex: none; margin-left: auto; }
+.header-icon {
+  display: grid; place-items: center; width: 32px; height: 32px; padding: 0;
+  border: 0; border-radius: 6px; background: transparent;
+  color: var(--header-fg); cursor: pointer;
+}
+.header-icon:hover { background: var(--header-hover); }
+
+.user-menu { position: relative; }
+.user-menu-trigger {
+  display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px 0 4px;
+  border: 0; border-radius: 6px; background: transparent;
+  color: var(--header-fg); font-size: 14px; font-weight: 500; cursor: pointer;
+}
+.user-menu-trigger:hover { background: var(--header-hover); }
+.user-menu-icon {
+  display: grid; place-items: center; width: 22px; height: 22px;
+  border: 1px solid var(--header-border-strong); border-radius: 50%;
+  color: var(--header-fg);
+}
+.user-menu-name { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dropdown {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 60;
+  width: 240px; padding: 4px 0; overflow: hidden;
+  background: var(--bg-canvas); border: 1px solid var(--border-default);
+  border-radius: 6px; box-shadow: var(--shadow-lg); color: var(--fg-default);
+}
+.dropdown-head {
+  padding: 8px 16px; border-bottom: 1px solid var(--border-muted);
+  font-size: 12px; color: var(--fg-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dropdown-head strong { color: var(--fg-default); font-weight: 600; }
+.dropdown-list { display: flex; flex-direction: column; }
+.dropdown-item {
+  display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 16px;
+  border: 0; background: transparent; color: var(--fg-default);
+  font-size: 14px; text-align: left; cursor: pointer; text-decoration: none;
+}
+.dropdown-item:hover { background: var(--bg-subtle); text-decoration: none; }
+.dropdown-item .octicon { color: var(--fg-muted); }
+.dropdown-item.is-danger, .dropdown-item.is-danger .octicon { color: var(--danger); }
+.dropdown-divider { height: 1px; margin: 4px 0; background: var(--border-muted); }
+
+/* ============================================================================
+   6. 个人主页
+   ========================================================================== */
+.profile-banner {
+  position: relative; height: 150px; overflow: hidden;
+  background: linear-gradient(120deg, var(--banner-1) 0%, var(--banner-2) 58%, var(--banner-3) 100%);
+}
+.profile-banner::before {
+  content: ""; position: absolute; inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px);
+  background-size: 18px 18px; opacity: 0.55;
+  -webkit-mask-image: linear-gradient(115deg, #000 10%, transparent 78%);
+  mask-image: linear-gradient(115deg, #000 10%, transparent 78%);
+}
+.profile-banner::after {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(620px 240px at 12% -10%, rgba(63, 185, 80, 0.28), transparent 72%);
+}
+.profile-container { padding-bottom: 24px; }
+.profile-hero {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap; padding-top: 24px;
+}
+.profile-hero-main { min-width: 0; }
+.profile-name-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; }
+.profile-name {
+  font-size: 32px; font-weight: 600; letter-spacing: -0.6px; line-height: 1.2;
+  color: var(--fg-default);
+}
+.profile-bio {
+  max-width: 640px; margin-bottom: 12px;
+  font-size: 14px; line-height: 1.65; color: var(--fg-muted);
+}
+.contact-list {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+  margin: 0; padding: 0; list-style: none;
+  font-size: 14px; color: var(--fg-muted);
+}
+.contact-item { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.contact-item .octicon { color: var(--fg-muted); }
+.contact-item a { color: var(--fg-muted); }
+.contact-item a:hover { color: var(--accent); }
+.contact-list-block { flex-direction: column; align-items: flex-start; gap: 10px; }
+.profile-hero-actions { display: flex; gap: 8px; padding-bottom: 4px; }
+
+.profile-tabs {
+  display: flex; align-items: center; gap: 4px;
+  margin-top: 24px; border-bottom: 1px solid var(--border-muted);
+  overflow-x: auto; scrollbar-width: none;
+}
+.profile-tabs::-webkit-scrollbar { display: none; }
+.profile-tab {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-bottom: -1px; padding: 8px 12px;
+  border: 0; border-bottom: 2px solid transparent; border-radius: 6px 6px 0 0;
+  background: transparent; color: var(--fg-muted); font-size: 14px;
+  white-space: nowrap; cursor: pointer;
+}
+.profile-tab:hover { color: var(--fg-default); background: var(--bg-subtle); }
+.profile-tab[aria-selected="true"] {
+  color: var(--fg-default); font-weight: 600; border-bottom-color: var(--tab-underline);
+}
+.tab-counter {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 5px;
+  border: 1px solid var(--border-muted); border-radius: 999px;
+  background: var(--bg-subtle); color: var(--fg-muted);
+  font-size: 11px; font-weight: 500;
+}
+.tabs-spacer { flex: 1; }
+.tabs-account { padding: 0 4px 8px; font-size: 12px; color: var(--fg-muted); white-space: nowrap; }
+.tabs-account strong { color: var(--fg-default); font-weight: 600; }
+
+.profile-grid {
+  display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  gap: 24px; margin-top: 24px; align-items: start;
+}
+.profile-main { min-width: 0; }
+.tab-panel > * + * { margin-top: 24px; }
+.profile-side { min-width: 0; }
+.profile-side .card + .card { margin-top: 24px; }
+
+.card {
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-default); border-radius: 6px;
+}
+.card-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 16px; border-bottom: 1px solid var(--border-muted);
+}
+.card-title { font-size: 16px; font-weight: 600; color: var(--fg-default); }
+.card-link { font-size: 12px; }
+.card-meta { font-size: 12px; color: var(--fg-muted); }
+.card-body { padding: 16px; }
+.about-text { font-size: 14px; line-height: 1.7; color: var(--fg-default); }
+.about-text + .about-text { margin-top: 12px; }
+.mini-title { margin: 20px 0 10px; font-size: 14px; font-weight: 600; color: var(--fg-default); }
+.card-body > .mini-title:first-child { margin-top: 0; }
+
+.section-block { min-width: 0; }
+.section-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; margin-bottom: 12px;
+}
+.section-title { font-size: 16px; font-weight: 600; color: var(--fg-default); }
+
+.repo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+.repo-card {
+  display: flex; flex-direction: column; gap: 8px; min-height: 140px; padding: 16px;
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-default); border-radius: 6px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.repo-card:hover { border-color: var(--fg-subtle); box-shadow: var(--shadow-sm); }
+.repo-card-head { display: flex; align-items: center; gap: 8px; }
+.repo-card-head .octicon { color: var(--fg-muted); }
+.repo-name {
+  font-size: 14px; font-weight: 600; color: var(--accent);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.repo-badge {
+  margin-left: auto; padding: 0 7px;
+  border: 1px solid var(--border-muted); border-radius: 999px;
+  font-size: 11px; font-weight: 500; line-height: 18px; color: var(--fg-muted);
+}
+.repo-desc { flex: 1; font-size: 13px; line-height: 1.55; color: var(--fg-muted); }
+.repo-foot { display: flex; align-items: center; gap: 12px; margin-top: 4px; font-size: 12px; color: var(--fg-muted); }
+.repo-lang { display: flex; align-items: center; gap: 6px; }
+.lang-dot { width: 10px; height: 10px; border-radius: 50%; }
+.repo-link { margin-left: auto; font-size: 12px; }
+.add-card {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  min-height: 140px; padding: 16px;
+  border: 1px dashed var(--border-default); border-radius: 6px;
+  background: transparent; color: var(--fg-muted); font: inherit; text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.add-card:hover { border-color: var(--accent); color: var(--accent); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.chip {
+  display: inline-flex; align-items: center; height: 24px; padding: 0 10px;
+  border-radius: 999px; background: var(--accent-subtle); color: var(--accent);
+  font-size: 12px; font-weight: 500;
+}
+
+.account-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 6px 0; font-size: 13px;
+}
+.account-key { flex: none; color: var(--fg-muted); }
+.account-value { color: var(--fg-default); font-weight: 500; text-align: right; overflow-wrap: anywhere; }
+.activity-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.activity-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--fg-muted); }
+.activity-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success-emphasis); }
+.activity-text { color: var(--fg-default); }
+.activity-time { margin-left: auto; white-space: nowrap; }
+.info-grid { display: grid; gap: 10px; font-size: 13px; }
+.info-grid > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.info-grid dt { color: var(--fg-muted); }
+.info-grid dd { color: var(--fg-default); text-align: right; }
+
+.site-footer {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+  margin-top: 56px; padding: 24px 0 40px;
+  border-top: 1px solid var(--border-muted);
+  font-size: 12px; color: var(--fg-subtle);
+}
+.footer-links { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+.footer-links a, .footer-links button { color: var(--fg-subtle); font-size: 12px; }
+.footer-links a:hover, .footer-links button:hover { color: var(--accent); }
+
+/* ============================================================================
+   7. 弹层 / Toast
+   ========================================================================== */
+dialog.gh-dialog {
+  width: min(480px, calc(100vw - 32px)); max-height: min(80vh, 640px);
+  padding: 0; overflow: hidden;
+  background: var(--bg-canvas); color: var(--fg-default);
+  border: 1px solid var(--border-default); border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+}
+dialog.gh-dialog::backdrop { background: rgba(31, 35, 40, 0.5); backdrop-filter: blur(2px); }
+.dialog-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 16px; border-bottom: 1px solid var(--border-muted);
+}
+.dialog-title { font-size: 16px; font-weight: 600; }
+.dialog-close {
+  display: grid; place-items: center; width: 28px; height: 28px;
+  padding: 0; border: 0; border-radius: 6px; background: transparent;
+  color: var(--fg-muted); cursor: pointer;
+}
+.dialog-close:hover { background: var(--bg-subtle); color: var(--fg-default); }
+.dialog-body {
+  max-height: 60vh; overflow: auto; padding: 16px;
+  font-size: 14px; line-height: 1.65; color: var(--fg-muted);
+}
+.dialog-body p + p { margin-top: 12px; }
+.dialog-body ul, .dialog-body ol { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; }
+.dialog-body strong { color: var(--fg-default); }
+.dialog-body code {
+  padding: 1px 5px; border-radius: 4px;
+  background: var(--bg-inset); color: var(--fg-default);
+  font-family: var(--font-mono); font-size: 12px;
+}
+.dialog-body pre {
+  margin: 12px 0 0; padding: 12px; overflow: auto;
+  background: var(--bg-subtle); border: 1px solid var(--border-muted); border-radius: 6px;
+  font-family: var(--font-mono); font-size: 12px; line-height: 1.6; color: var(--fg-default);
+}
+.dialog-actions {
+  display: flex; justify-content: flex-end; gap: 8px;
+  padding: 16px; border-top: 1px solid var(--border-muted);
+}
+
+.toast-region {
+  position: fixed; left: 50%; bottom: 24px; z-index: 100;
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  width: min(480px, calc(100vw - 32px)); pointer-events: none;
+}
+.toast {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 12px 16px;
+  background: var(--toast-bg); color: var(--toast-fg);
+  border-radius: 6px; box-shadow: var(--shadow-lg);
+  font-size: 14px; pointer-events: auto;
+  animation: toast-in 0.18s ease-out;
+}
+.toast.is-leaving { animation: toast-out 0.18s ease-in forwards; }
+.toast-icon { flex: none; }
+.toast-text { min-width: 0; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes toast-out { from { opacity: 1; } to { opacity: 0; transform: translateY(6px); } }
+
+/* ============================================================================
+   8. 响应式
+   ========================================================================== */
+@media (max-width: 900px) {
+  .profile-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 767px) {
+  .gh-container { padding: 0 16px; }
+  .header-inner { height: 56px; gap: 8px; }
+  .header-search, .header-nav { display: none; }
+  .user-menu-name { display: none; }
+  .profile-banner { height: 110px; }
+  .profile-hero { flex-direction: column; align-items: flex-start; padding-top: 16px; }
+  .profile-name { font-size: 24px; }
+  .profile-hero-actions { width: 100%; }
+  .profile-hero-actions .btn { flex: 1; }
+  .tabs-account { display: none; }
+  .repo-grid { grid-template-columns: minmax(0, 1fr); }
+  .auth-shell { padding: 24px 16px; }
+  .auth-title { font-size: 20px; }
+  /* 移动端输入框使用 16px，避免 iOS Safari 聚焦时自动放大页面 */
+  .input { height: 38px; font-size: 16px; }
+  .input-wrap .input { padding-right: 42px; }
+  .btn { height: 38px; }
+  .theme-fab { top: 12px; right: 12px; width: 32px; height: 32px; }
+  .profile-tab { padding: 8px 10px; }
+  .site-footer { flex-direction: column; align-items: flex-start; }
+}
+
+/* ============================================================================
+   9. 动效偏好
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+</style>
+</head>
 <body>
-<h1>Hello World</h1>
-<p>李思远</p>
+
+<!-- ==========================================================================
+     SVG 图标精灵
+     ======================================================================== -->
+<svg class="svg-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+  <symbol id="i-code" viewBox="0 0 16 16">
+    <path d="M5.5 4.2 2 8l3.5 3.8M10.5 4.2 14 8l-3.5 3.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 16 16">
+    <path d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z"/>
+  </symbol>
+  <symbol id="i-person" viewBox="0 0 16 16">
+    <path d="M10.561 8.073a6.005 6.005 0 0 1 3.432 5.142.75.75 0 1 1-1.498.07 4.5 4.5 0 0 0-8.99 0 .75.75 0 0 1-1.498-.07 6.004 6.004 0 0 1 3.431-5.142 3.999 3.999 0 1 1 5.123 0ZM10.5 5a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z"/>
+  </symbol>
+  <symbol id="i-caret" viewBox="0 0 16 16">
+    <path d="m4.427 7.427 3.396 3.396a.25.25 0 0 0 .354 0l3.396-3.396A.25.25 0 0 0 11.396 7H4.604a.25.25 0 0 0-.177.427Z"/>
+  </symbol>
+  <symbol id="i-location" viewBox="0 0 16 16">
+    <path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10Zm0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z"/>
+  </symbol>
+  <symbol id="i-mail" viewBox="0 0 16 16">
+    <path d="M1.75 2h12.5c.966 0 1.75.784 1.75 1.75v8.5A1.75 1.75 0 0 1 14.25 14H1.75A1.75 1.75 0 0 1 0 12.25v-8.5C0 2.784.784 2 1.75 2ZM1.5 12.251c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V5.809L8.38 9.397a.75.75 0 0 1-.76 0L1.5 5.809v6.442Zm13-8.181v-.32a.25.25 0 0 0-.25-.25H1.75a.25.25 0 0 0-.25.25v.32L8 7.88Z"/>
+  </symbol>
+  <symbol id="i-sun" viewBox="0 0 16 16">
+    <path d="M8 12a4 4 0 1 1 0-8 4 4 0 0 1 0 8ZM8 0a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0V.75A.75.75 0 0 1 8 0Zm0 13a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5A.75.75 0 0 1 8 13ZM0 8a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 0 1.5H.75A.75.75 0 0 1 0 8Zm13 0a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 0 1.5h-1.5A.75.75 0 0 1 13 8ZM2.343 2.343a.75.75 0 0 1 1.06 0l1.061 1.06a.75.75 0 0 1-1.06 1.06l-1.06-1.06a.75.75 0 0 1 0-1.06Zm9.193 9.193a.75.75 0 0 1 1.06 0l1.061 1.06a.75.75 0 0 1-1.06 1.06l-1.06-1.06a.75.75 0 0 1 0-1.06ZM13.657 2.343a.75.75 0 0 1 0 1.06l-1.06 1.061a.75.75 0 0 1-1.06-1.06l1.06-1.06a.75.75 0 0 1 1.06 0ZM4.464 11.536a.75.75 0 0 1 0 1.06l-1.06 1.061a.75.75 0 0 1-1.06-1.06l1.06-1.06a.75.75 0 0 1 1.06 0Z"/>
+  </symbol>
+  <symbol id="i-moon" viewBox="0 0 16 16">
+    <path d="M9.598 1.591a.749.749 0 0 1 .785-.175 7.001 7.001 0 1 1-8.967 8.967.75.75 0 0 1 .961-.96 5.5 5.5 0 0 0 7.046-7.046.75.75 0 0 1 .175-.786Z"/>
+  </symbol>
+  <symbol id="i-eye" viewBox="0 0 16 16">
+    <path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+    <circle cx="8" cy="8" r="2" fill="none" stroke="currentColor" stroke-width="1.3"/>
+  </symbol>
+  <symbol id="i-eye-off" viewBox="0 0 16 16">
+    <path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+    <circle cx="8" cy="8" r="2" fill="none" stroke="currentColor" stroke-width="1.3"/>
+    <path d="M2.5 2.5l11 11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 16 16">
+    <path d="M3 8.6 6.2 11.8 13 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-x" viewBox="0 0 16 16">
+    <path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-alert" viewBox="0 0 16 16">
+    <circle cx="8" cy="8" r="6.4" fill="none" stroke="currentColor" stroke-width="1.4"/>
+    <path d="M8 4.7v4.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    <circle cx="8" cy="11.5" r="0.95" fill="currentColor"/>
+  </symbol>
+  <symbol id="i-repo" viewBox="0 0 16 16">
+    <path d="M3 3.1c0-.7.6-1.3 1.3-1.3H13v11.4H4.3C3.6 13.2 3 12.6 3 11.9V3.1Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+    <path d="M3 11.1c0-.7.6-1.3 1.3-1.3H13" fill="none" stroke="currentColor" stroke-width="1.3"/>
+  </symbol>
+  <symbol id="i-globe" viewBox="0 0 16 16">
+    <circle cx="8" cy="8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.3"/>
+    <ellipse cx="8" cy="8" rx="2.7" ry="6.3" fill="none" stroke="currentColor" stroke-width="1.3"/>
+    <path d="M1.9 8h12.2" fill="none" stroke="currentColor" stroke-width="1.3"/>
+  </symbol>
+  <symbol id="i-pencil" viewBox="0 0 16 16">
+    <path d="m9.8 3.3 2.9 2.9M3 13l.7-3.1L10.9 2.7a1.5 1.5 0 0 1 2.1 0l.3.3a1.5 1.5 0 0 1 0 2.1l-7.2 7.2L3 13Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-copy" viewBox="0 0 16 16">
+    <rect x="5.5" y="5.5" width="8" height="8" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/>
+    <path d="M10.5 5.5V4.1c0-.9-.7-1.6-1.6-1.6H4.1c-.9 0-1.6.7-1.6 1.6v4.8c0 .9.7 1.6 1.6 1.6h1.4" fill="none" stroke="currentColor" stroke-width="1.3"/>
+  </symbol>
+  <symbol id="i-signout" viewBox="0 0 16 16">
+    <path d="M6.5 3H4.2c-.9 0-1.7.8-1.7 1.7v6.6c0 .9.8 1.7 1.7 1.7h2.3M10.5 5.5 13 8l-2.5 2.5M13 8H6.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-plus" viewBox="0 0 16 16">
+    <path d="M8 3.2v9.6M3.2 8h9.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-info" viewBox="0 0 16 16">
+    <circle cx="8" cy="8" r="6.4" fill="none" stroke="currentColor" stroke-width="1.4"/>
+    <path d="M8 7.2v3.3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    <circle cx="8" cy="4.9" r="0.95" fill="currentColor"/>
+  </symbol>
+  <symbol id="i-arrow-up" viewBox="0 0 16 16">
+    <path d="M8 13V3.5M8 3.5 4.2 7.3M8 3.5l3.8 3.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+</svg>
+
+<!-- ==========================================================================
+     一、登录 / 注册页（起始页面）
+     ======================================================================== -->
+<div class="auth-view" id="auth-view">
+  <button class="theme-fab" type="button" data-theme-toggle aria-label="切换主题" title="切换主题">
+    <svg class="octicon theme-icon-moon" aria-hidden="true" focusable="false"><use href="#i-moon"/></svg>
+    <svg class="octicon theme-icon-sun" aria-hidden="true" focusable="false"><use href="#i-sun"/></svg>
+  </button>
+
+  <main class="auth-shell">
+    <div class="auth-content">
+      <!-- 登录 -->
+      <section class="auth-panel" id="panel-signin" data-panel="signin">
+        <h1 class="auth-title">登录</h1>
+        <p class="auth-subtitle">使用用户名和密码登录，无需邮箱</p>
+        <div class="auth-card">
+          <div class="alert" id="signin-alert" role="alert" hidden>
+            <svg class="octicon" aria-hidden="true" focusable="false"><use href="#i-alert"/></svg>
+            <span class="alert-text"></span>
+          </div>
+          <form id="signin-form" novalidate>
+            <div class="form-group" id="signin-username-group">
+              <label class="form-label" for="signin-username">用户名</label>
+              <input class="input" id="signin-username" name="username" type="text"
+                     placeholder="请输入用户名"
+                     autocomplete="username" autocapitalize="none" autocorrect="off"
+                     spellcheck="false" required>
+              <p class="field-error" id="signin-username-error" role="alert" hidden></p>
+            </div>
+            <div class="form-group" id="signin-password-group">
+              <div class="label-row">
+                <label class="form-label" for="signin-password">密码</label>
+                <button class="link-button" type="button" data-dialog-open="forgot-dialog">忘记密码？</button>
+              </div>
+              <div class="input-wrap">
+                <input class="input" id="signin-password" name="password" type="password"
+                       placeholder="请输入密码"
+                       autocomplete="current-password" required>
+                <button class="input-action" type="button" data-toggle-password="signin-password"
+                        aria-label="显示密码" aria-pressed="false">
+                  <svg class="octicon octicon-eye" aria-hidden="true" focusable="false"><use href="#i-eye"/></svg>
+                  <svg class="octicon octicon-eye-off" aria-hidden="true" focusable="false"><use href="#i-eye-off"/></svg>
+                </button>
+              </div>
+              <p class="field-error" id="signin-password-error" role="alert" hidden></p>
+            </div>
+            <button class="btn btn-primary btn-block" id="signin-submit" type="submit">
+              <span class="spinner" aria-hidden="true" hidden></span>
+              <span class="btn-text">登录</span>
+            </button>
+          </form>
+        </div>
+        <div class="auth-switch">还没有账号？ <a href="#/signup">创建一个账号</a></div>
+      </section>
+
+      <!-- 注册 -->
+      <section class="auth-panel" id="panel-signup" data-panel="signup" hidden>
+        <h1 class="auth-title">注册账号</h1>
+        <p class="auth-subtitle">只需用户名和密码，无需邮箱</p>
+        <div class="auth-card">
+          <div class="alert" id="signup-alert" role="alert" hidden>
+            <svg class="octicon" aria-hidden="true" focusable="false"><use href="#i-alert"/></svg>
+            <span class="alert-text"></span>
+          </div>
+          <form id="signup-form" novalidate>
+            <div class="form-group" id="signup-username-group">
+              <label class="form-label" for="signup-username">用户名</label>
+              <input class="input" id="signup-username" name="username" type="text"
+                     placeholder="请输入用户名"
+                     autocomplete="username" autocapitalize="none" autocorrect="off"
+                     spellcheck="false" required>
+              <p class="form-hint">2–20 个字符，支持中文、字母、数字、下划线和连字符</p>
+              <p class="field-error" id="signup-username-error" role="alert" hidden></p>
+            </div>
+            <div class="form-group" id="signup-password-group">
+              <label class="form-label" for="signup-password">密码</label>
+              <div class="input-wrap">
+                <input class="input" id="signup-password" name="password" type="password"
+                       placeholder="6–30 位，包含大小写字母和数字"
+                       autocomplete="new-password" required>
+                <button class="input-action" type="button" data-toggle-password="signup-password"
+                        aria-label="显示密码" aria-pressed="false">
+                  <svg class="octicon octicon-eye" aria-hidden="true" focusable="false"><use href="#i-eye"/></svg>
+                  <svg class="octicon octicon-eye-off" aria-hidden="true" focusable="false"><use href="#i-eye-off"/></svg>
+                </button>
+              </div>
+              <div class="strength" id="signup-strength" data-state="idle" aria-hidden="true">
+                <span class="strength-bar"></span>
+                <span class="strength-bar"></span>
+                <span class="strength-bar"></span>
+                <span class="strength-bar"></span>
+              </div>
+              <p class="strength-label" id="signup-strength-label" aria-live="polite">
+                请设置 6–30 位密码，需包含大写字母、小写字母和数字
+              </p>
+              <ul class="rule-list" id="signup-rules">
+                <li class="rule" data-rule="length"><span class="rule-state" aria-hidden="true">•</span>6–30 个字符</li>
+                <li class="rule" data-rule="upper"><span class="rule-state" aria-hidden="true">•</span>包含大写字母</li>
+                <li class="rule" data-rule="lower"><span class="rule-state" aria-hidden="true">•</span>包含小写字母</li>
+                <li class="rule" data-rule="digit"><span class="rule-state" aria-hidden="true">•</span>包含数字</li>
+              </ul>
+              <p class="field-error" id="signup-password-error" role="alert" hidden></p>
+            </div>
+            <div class="form-group" id="signup-confirm-group">
+              <label class="form-label" for="signup-confirm">确认密码</label>
+              <div class="input-wrap">
+                <input class="input" id="signup-confirm" name="confirm" type="password"
+                       placeholder="请再次输入密码"
+                       autocomplete="new-password" required>
+                <button class="input-action" type="button" data-toggle-password="signup-confirm"
+                        aria-label="显示密码" aria-pressed="false">
+                  <svg class="octicon octicon-eye" aria-hidden="true" focusable="false"><use href="#i-eye"/></svg>
+                  <svg class="octicon octicon-eye-off" aria-hidden="true" focusable="false"><use href="#i-eye-off"/></svg>
+                </button>
+              </div>
+              <p class="field-error" id="signup-confirm-error" role="alert" hidden></p>
+            </div>
+            <p class="legal">
+              注册即表示你同意：账号与密码仅保存在当前浏览器本地（密码以加盐哈希形式存储，不会上传到任何服务器）。
+              <a href="#" data-dialog-open="privacy-dialog">了解详情</a>。
+            </p>
+            <button class="btn btn-primary btn-block" id="signup-submit" type="submit">
+              <span class="spinner" aria-hidden="true" hidden></span>
+              <span class="btn-text">注册</span>
+            </button>
+          </form>
+        </div>
+        <div class="auth-switch">已有账号？ <a href="#/signin">直接登录</a></div>
+      </section>
+    </div>
+
+    <footer class="auth-footer">
+      <ul class="auth-footer-links">
+        <li><button class="link-button" type="button" data-dialog-open="privacy-dialog">隐私说明</button></li>
+        <li><a href="https://github.com/OIHUU/oihuu.github.io" target="_blank" rel="noopener noreferrer">源代码</a></li>
+      </ul>
+      <p class="auth-footer-copy">
+        © <span data-year>2026</span> 个人网站 · 仅本地账号，数据保存在当前浏览器中。
+      </p>
+    </footer>
+  </main>
+</div>
+
+<!-- ==========================================================================
+     二、登录后的个人主页
+     ======================================================================== -->
+<div class="site-view" id="home-view" hidden>
+  <header class="global-header">
+    <div class="gh-container header-inner">
+      <a class="header-logo" href="#/home" aria-label="OIHUU 首页">
+        <span class="header-wordmark">OIHUU</span>
+      </a>
+
+      <div class="header-search" id="header-search">
+        <svg class="octicon" aria-hidden="true" focusable="false"><use href="#i-search"/></svg>
+        <input class="header-search-input" id="site-search" type="search"
+               placeholder="搜索或跳转到…" aria-label="搜索" autocomplete="off">
+        <kbd class="header-kbd">/</kbd>
+      </div>
+
+      <nav class="header-nav" aria-label="主导航">
+        <a class="header-nav-link is-active" href="#/home" data-tab-link="overview">个人主页</a>
+        <a class="header-nav-link" href="#/home" data-tab-link="projects">项目</a>
+        <a class="header-nav-link" href="#/home" data-tab-link="about">关于</a>
+      </nav>
+
+      <div class="header-actions">
+        <button class="header-icon" type="button" data-theme-toggle aria-label="切换主题" title="切换主题">
+          <svg class="octicon theme-icon-moon" aria-hidden="true" focusable="false"><use href="#i-moon"/></svg>
+          <svg class="octicon theme-icon-sun" aria-hidden="true" focusable="false"><use href="#i-sun"/></svg>
+        </button>
+        <div class="user-menu" id="user-menu">
+          <button class="user-menu-trigger" id="user-menu-trigger" type="button"
+                  aria-haspopup="true" aria-expanded="false" aria-controls="user-dropdown">
+            <span class="user-menu-icon">
+              <svg class="octicon" aria-hidden="true" focusable="false"><use href="#i-person"/></svg>
+            </span>
+            <span class="user-menu-name" data-account-handle>@username</span>
+            <svg class="octicon" aria-hidden="true" focusable="false"><use href="#i-caret"/></svg>
+          </button>
+          <div class="dropdown" id="user-dropdown" hidden>
+            <div class="dropdown-head">已登录为 <strong data-account-handle>@username</strong></div>
+            <div class="dropdown-list">
+              <a class="dropdown-item" href="#/home" role="menuitem">
+                <svg class="octicon" aria-hidden="true" focusable="false"><use href="#i-person"/></svg>
+                个人主页
+              </a>
+              <button class="dropdown-item" type="button" role="menuitem" data-action="customize">
+                <svg class="octicon" aria-hidden="true" focusable="false"><use href="#i-pencil"/></svg>
+                编辑主页资料
+              </button>
+              <div class="dropdown-divider"></div>
+              <button class="dropdown-item is-danger" type="button" role="menuitem" data-action="logout">
+                <svg class="octicon" aria-hidden="true" focusable="false"><use href="#i-signout"/></svg>
+                退出登录
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="profile-banner" aria-hidden="true"></div>
+
+    <div class="gh-container profile-container">
+      <section class="profile-hero" aria-labelledby="profile-name">
+        <div class="profile-hero-main">
+          <div class="profile-name-row">
+            <h1 class="profile-name" id="profile-name" data-profile-name>@OIHUU</h1>
+          </div>
+          <p class="profile-bio" data-profile-bio></p>
+          <ul class="contact-list" data-contact-list aria-label="联系方式"></ul>
+        </div>
+        <div class="profile-hero-actions">
+          <button class="btn" type="button" data-action="customize">
+            <svg class="octicon" aria-hidden="true" focusable="false"><use href="#i-pencil"/></svg>
+            编辑主页
+          </button>
+          <button class="btn" type="button" data-action="copy-link">
+            <svg class="octicon" aria-hidden="true" focusable="false"><use href="#i-copy"/></svg>
+            复制链接
+          </button>
+        </div>
+      </section>
+
+      <nav class="profile-tabs" role="tablist" aria-label="主页分区">
+        <button class="profile-tab" id="tab-overview" type="button" role="tab"
+                aria-selected="true" aria-controls="panel-overview" data-tab="overview">概览</button>
+        <button class="profile-tab" id="tab-projects" type="button" role="tab"
+                aria-selected="false" aria-controls="panel-projects" data-tab="projects" tabindex="-1">
+          项目 <span class="tab-counter" data-project-count>0</span>
+        </button>
+        <button class="profile-tab" id="tab-about" type="button" role="tab"
+                aria-selected="false" aria-controls="panel-about" data-tab="about" tabindex="-1">关于</button>
+        <span class="tabs-spacer"></span>
+        <span class="tabs-account">当前账号 <strong data-account-handle>@username</strong></span>
+      </nav>
+
+      <div class="profile-grid">
+        <div class="profile-main">
+          <!-- 概览 -->
+          <div class="tab-panel" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
+            <section class="card">
+              <header class="card-header">
+                <h2 class="card-title">关于我</h2>
+                <button class="link-button card-link" type="button" data-tab-jump="about">了解更多 →</button>
+              </header>
+              <div class="card-body">
+                <p class="about-text" data-profile-bio></p>
+                <ul class="chips" data-profile-skills></ul>
+              </div>
+            </section>
+            <section class="section-block">
+              <div class="section-head">
+                <h2 class="section-title">置顶项目</h2>
+                <button class="link-button card-link" type="button" data-tab-jump="projects">查看全部 →</button>
+              </div>
+              <div class="repo-grid" data-project-list="featured"></div>
+            </section>
+          </div>
+
+          <!-- 项目 -->
+          <div class="tab-panel" id="panel-projects" role="tabpanel" aria-labelledby="tab-projects" hidden>
+            <section class="section-block">
+              <div class="section-head">
+                <h2 class="section-title">项目</h2>
+                <span class="card-meta" data-project-count-label>0 个</span>
+              </div>
+              <div class="repo-grid" data-project-list="all"></div>
+            </section>
+          </div>
+
+          <!-- 关于 -->
+          <div class="tab-panel" id="panel-about" role="tabpanel" aria-labelledby="tab-about" hidden>
+            <section class="card">
+              <header class="card-header"><h2 class="card-title">关于</h2></header>
+              <div class="card-body">
+                <p class="about-text" data-profile-bio></p>
+                <h3 class="mini-title">技术栈</h3>
+                <ul class="chips" data-profile-skills></ul>
+                <h3 class="mini-title">联系方式</h3>
+                <ul class="contact-list contact-list-block" data-contact-list></ul>
+                <p class="hint">想修改这里的内容？点击页面上方的「编辑主页」查看说明。</p>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <!-- 侧栏 -->
+        <aside class="profile-side">
+          <section class="card">
+            <header class="card-header"><h2 class="card-title">账号</h2></header>
+            <div class="card-body">
+              <div class="account-row">
+                <span class="account-key">用户名</span>
+                <strong class="account-value" data-account-handle>@username</strong>
+              </div>
+              <div class="account-row">
+                <span class="account-key">注册时间</span>
+                <span class="account-value" data-account-created>—</span>
+              </div>
+              <div class="account-row">
+                <span class="account-key">上次登录</span>
+                <span class="account-value" data-account-lastlogin>—</span>
+              </div>
+              <hr class="divider">
+              <h3 class="mini-title">最近活动</h3>
+              <ul class="activity-list" id="account-events"></ul>
+              <p class="hint">账号信息仅保存在当前浏览器的 localStorage 中，不会上传到任何服务器。</p>
+              <button class="btn btn-block" type="button" data-action="logout">退出登录</button>
+            </div>
+          </section>
+
+          <section class="card">
+            <header class="card-header"><h2 class="card-title">站点信息</h2></header>
+            <div class="card-body">
+              <dl class="info-grid">
+                <div><dt>技术</dt><dd>原生 HTML / CSS / JS</dd></div>
+                <div><dt>托管</dt><dd>GitHub Pages</dd></div>
+                <div><dt>账号</dt><dd>浏览器 localStorage</dd></div>
+                <div><dt>主题</dt><dd>浅色 / 深色</dd></div>
+              </dl>
+            </div>
+          </section>
+        </aside>
+      </div>
+
+      <footer class="site-footer">
+        <div class="footer-links">
+          <a href="https://github.com/OIHUU" target="_blank" rel="noopener noreferrer">GitHub 主页 ↗</a>
+          <a href="https://github.com/OIHUU/oihuu.github.io" target="_blank" rel="noopener noreferrer">源代码 ↗</a>
+          <button class="link-button" type="button" data-action="back-to-top">回到顶部 ↑</button>
+        </div>
+        <p>© <span data-year>2026</span> 个人网站 · 由 GitHub Pages 托管 · 使用原生 HTML / CSS / JavaScript 构建</p>
+      </footer>
+    </div>
+  </main>
+</div>
+
+<noscript>
+  <p class="noscript-note">本站的登录与注册功能需要启用 JavaScript。</p>
+</noscript>
+
+<!-- ==========================================================================
+     三、弹层
+     ======================================================================== -->
+<dialog class="gh-dialog" id="forgot-dialog" aria-labelledby="forgot-title">
+  <div class="dialog-header">
+    <h2 class="dialog-title" id="forgot-title">忘记密码？</h2>
+    <button class="dialog-close" type="button" data-dialog-close aria-label="关闭">
+      <svg class="octicon" aria-hidden="true" focusable="false"><use href="#i-x"/></svg>
+    </button>
+  </div>
+  <div class="dialog-body">
+    <p>本站使用<strong>本地账号</strong>：账号保存在当前浏览器的 <code>localStorage</code> 中，没有服务器，
+      也没有邮箱，所以无法找回或重置密码。</p>
+    <p>如果忘记密码，可以清除本站的浏览器数据（开发者工具 → Application → Local Storage），
+      然后重新注册账号。清除后，本机保存的所有本地账号都会被删除。</p>
+  </div>
+  <div class="dialog-actions">
+    <button class="btn" type="button" data-dialog-close>知道了</button>
+  </div>
+</dialog>
+
+<dialog class="gh-dialog" id="privacy-dialog" aria-labelledby="privacy-title">
+  <div class="dialog-header">
+    <h2 class="dialog-title" id="privacy-title">隐私说明</h2>
+    <button class="dialog-close" type="button" data-dialog-close aria-label="关闭">
+      <svg class="octicon" aria-hidden="true" focusable="false"><use href="#i-x"/></svg>
+    </button>
+  </div>
+  <div class="dialog-body">
+    <p>这是一个纯静态个人网站，没有后端，也不会把你的账号密码发送到任何地方。</p>
+    <ul>
+      <li><strong>账号</strong> —— 保存在当前浏览器的 <code>localStorage</code> 中，键名为 <code>oihuu.accounts.v1</code>。</li>
+      <li><strong>密码</strong> —— 不以明文保存：密码会先加盐，再经过多轮 SHA-256 哈希后才写入。</li>
+      <li><strong>登录状态</strong> —— 保存在 <code>oihuu.session.v1</code>，用于保持登录。</li>
+      <li><strong>主题</strong> —— 保存在 <code>oihuu.theme.v1</code>。</li>
+      <li>不使用 Cookie，不接入统计，不加载第三方资源。</li>
+    </ul>
+    <p>清除本站的浏览器数据会永久删除所有本地账号。</p>
+  </div>
+  <div class="dialog-actions">
+    <button class="btn" type="button" data-dialog-close>关闭</button>
+  </div>
+</dialog>
+
+<dialog class="gh-dialog" id="customize-dialog" aria-labelledby="customize-title">
+  <div class="dialog-header">
+    <h2 class="dialog-title" id="customize-title">如何修改主页内容</h2>
+    <button class="dialog-close" type="button" data-dialog-close aria-label="关闭">
+      <svg class="octicon" aria-hidden="true" focusable="false"><use href="#i-x"/></svg>
+    </button>
+  </div>
+  <div class="dialog-body">
+    <p>这是一个纯静态站点，个人资料直接写在 <code>index.html</code> 里，改完提交到仓库即可自动更新。</p>
+    <ol>
+      <li>打开 <code>index.html</code>，搜索 <code>const PROFILE = {</code></li>
+      <li>修改 <code>handle</code>、<code>bio</code>、<code>location</code>、<code>email</code>、<code>projects</code>、<code>skills</code> 等字段</li>
+      <li>保存并提交到 GitHub 仓库，GitHub Pages 会自动重新部署</li>
+    </ol>
+    <pre>const PROFILE = {
+  handle: "OIHUU",
+  bio: "你好，欢迎来到我的个人主页。……",
+  location: "",              // 留空则不显示
+  email: "",                 // 留空则不显示
+  github: "https://github.com/OIHUU",
+  website: "https://oihuu.github.io",
+  projects: [ ... ],
+  skills: [ ... ]
+};</pre>
+    <p>主页只显示用户名，不显示真实姓名；登录账号（用户名 / 密码）保存在浏览器本地，和主页资料是分开的。</p>
+  </div>
+  <div class="dialog-actions">
+    <button class="btn" type="button" data-dialog-close>知道了</button>
+  </div>
+</dialog>
+
+<div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="false"></div>
+
+<!-- ==========================================================================
+     四、页面逻辑
+     ======================================================================== -->
+<script>
+(function () {
+  "use strict";
+
+  /* ==========================================================================
+     1. 个人资料 —— 只需要改这里，就能更新登录后的个人主页
+     ========================================================================== */
+  const PROFILE = {
+    handle: "OIHUU",
+    bio: "你好，欢迎来到我的个人主页 —— 一个用原生 HTML、CSS 和 JavaScript 构建的静态站点。",
+    location: "",                 // 例如 "中国 · 杭州"，留空则不显示
+    email: "",                    // 例如 "hello@example.com"，留空则不显示
+    github: "https://github.com/OIHUU",
+    website: "https://oihuu.github.io",
+    projects: [
+      {
+        name: "oihuu.github.io",
+        desc: "个人网站：中文登录 / 注册起始页，登录后进入个人主页。纯原生实现，零依赖。",
+        language: "HTML",
+        languageColor: "#e34c26",
+        url: "https://github.com/OIHUU/oihuu.github.io"
+      }
+    ],
+    skills: ["HTML", "CSS", "JavaScript", "Git", "GitHub Pages"]
+  };
+
+  /* ==========================================================================
+     2. 常量与本地存储
+     ========================================================================== */
+  const STORAGE_KEYS = {
+    accounts: "oihuu.accounts.v1",
+    session: "oihuu.session.v1",
+    theme: "oihuu.theme.v1"
+  };
+  const USERNAME_MIN = 2;
+  const USERNAME_MAX = 20;
+  const PASSWORD_MIN = 6;
+  const PASSWORD_MAX = 30;
+  const HASH_ITERATIONS = 8000;
+  const USERNAME_PATTERN = /^[\p{L}\p{N}_-]+$/u;
+
+  function safeRead(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw === null ? fallback : raw;
+    } catch (error) {
+      return fallback;
+    }
+  }
+  function safeWrite(key, value) {
+    try {
+      localStorage.setItem(key, value);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+  function readJSON(key, fallback) {
+    const raw = safeRead(key, null);
+    if (raw === null) return fallback;
+    try {
+      return JSON.parse(raw);
+    } catch (error) {
+      return fallback;
+    }
+  }
+  function writeJSON(key, value) {
+    try {
+      return safeWrite(key, JSON.stringify(value));
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function loadAccounts() {
+    const data = readJSON(STORAGE_KEYS.accounts, null);
+    return data && typeof data === "object" && !Array.isArray(data) ? data : {};
+  }
+  function saveAccounts(accounts) {
+    return writeJSON(STORAGE_KEYS.accounts, accounts);
+  }
+  function normalizeUsername(username) {
+    return String(username).trim().toLowerCase();
+  }
+  function accountKeyExists(accounts, username) {
+    return Object.prototype.hasOwnProperty.call(accounts, normalizeUsername(username));
+  }
+
+  /* ==========================================================================
+     3. 密码哈希：随机盐 + 多轮 SHA-256（纯 JS，保证本地环境一致）
+     ========================================================================== */
+  const SHA256_K = new Uint32Array([
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+  ]);
+
+  function rotateRight(value, bits) {
+    return (value >>> bits) | (value << (32 - bits));
+  }
+
+  function sha256Hex(message) {
+    const data = new TextEncoder().encode(String(message));
+    const length = data.length;
+    const bitLength = length * 8;
+    const total = ((length + 9 + 63) >> 6) << 6;
+    const buffer = new Uint8Array(total);
+    buffer.set(data);
+    buffer[length] = 0x80;
+    const view = new DataView(buffer.buffer);
+    view.setUint32(total - 4, bitLength >>> 0, false);
+    view.setUint32(total - 8, Math.floor(bitLength / 4294967296), false);
+
+    const hash = new Uint32Array([
+      0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+      0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
+    ]);
+    const words = new Uint32Array(64);
+
+    for (let offset = 0; offset < total; offset += 64) {
+      for (let index = 0; index < 16; index++) {
+        words[index] = view.getUint32(offset + index * 4, false);
+      }
+      for (let index = 16; index < 64; index++) {
+        const s0 = rotateRight(words[index - 15], 7) ^ rotateRight(words[index - 15], 18) ^ (words[index - 15] >>> 3);
+        const s1 = rotateRight(words[index - 2], 17) ^ rotateRight(words[index - 2], 19) ^ (words[index - 2] >>> 10);
+        words[index] = (words[index - 16] + s0 + words[index - 7] + s1) >>> 0;
+      }
+
+      let a = hash[0], b = hash[1], c = hash[2], d = hash[3];
+      let e = hash[4], f = hash[5], g = hash[6], h = hash[7];
+
+      for (let index = 0; index < 64; index++) {
+        const sigma1 = rotateRight(e, 6) ^ rotateRight(e, 11) ^ rotateRight(e, 25);
+        const choice = (e & f) ^ (~e & g);
+        const temp1 = (h + sigma1 + choice + SHA256_K[index] + words[index]) >>> 0;
+        const sigma0 = rotateRight(a, 2) ^ rotateRight(a, 13) ^ rotateRight(a, 22);
+        const majority = (a & b) ^ (a & c) ^ (b & c);
+        const temp2 = (sigma0 + majority) >>> 0;
+        h = g; g = f; f = e;
+        e = (d + temp1) >>> 0;
+        d = c; c = b; b = a;
+        a = (temp1 + temp2) >>> 0;
+      }
+
+      hash[0] = (hash[0] + a) >>> 0;
+      hash[1] = (hash[1] + b) >>> 0;
+      hash[2] = (hash[2] + c) >>> 0;
+      hash[3] = (hash[3] + d) >>> 0;
+      hash[4] = (hash[4] + e) >>> 0;
+      hash[5] = (hash[5] + f) >>> 0;
+      hash[6] = (hash[6] + g) >>> 0;
+      hash[7] = (hash[7] + h) >>> 0;
+    }
+
+    let output = "";
+    for (let index = 0; index < 8; index++) {
+      output += hash[index].toString(16).padStart(8, "0");
+    }
+    return output;
+  }
+
+  function randomSalt() {
+    const bytes = new Uint8Array(16);
+    if (window.crypto && typeof window.crypto.getRandomValues === "function") {
+      window.crypto.getRandomValues(bytes);
+    } else {
+      for (let index = 0; index < bytes.length; index++) {
+        bytes[index] = Math.floor(Math.random() * 256);
+      }
+    }
+    return Array.prototype.map.call(bytes, function (byte) {
+      return byte.toString(16).padStart(2, "0");
+    }).join("");
+  }
+
+  function hashPassword(password, salt, iterations) {
+    const rounds = iterations || HASH_ITERATIONS;
+    let digest = sha256Hex(salt + ":" + password);
+    for (let index = 0; index < rounds; index++) {
+      digest = sha256Hex(digest + ":" + salt + ":" + index);
+    }
+    return digest;
+  }
+
+  /* ==========================================================================
+     4. 表单校验规则
+     ========================================================================== */
+  function passwordIssues(password) {
+    const characters = Array.from(String(password));
+    return {
+      length: characters.length >= PASSWORD_MIN && characters.length <= PASSWORD_MAX,
+      upper: /[A-Z]/.test(password),
+      lower: /[a-z]/.test(password),
+      digit: /[0-9]/.test(password)
+    };
+  }
+  function passwordIsValid(password) {
+    const issues = passwordIssues(password);
+    return issues.length && issues.upper && issues.lower && issues.digit;
+  }
+  function usernameProblem(username) {
+    const value = String(username).trim();
+    const characters = Array.from(value);
+    if (!value) return "请输入用户名。";
+    if (characters.length < USERNAME_MIN || characters.length > USERNAME_MAX) {
+      return "用户名长度需为 " + USERNAME_MIN + "–" + USERNAME_MAX + " 个字符。";
+    }
+    if (!USERNAME_PATTERN.test(value)) {
+      return "用户名只能包含中文、字母、数字、下划线和连字符。";
+    }
+    return "";
+  }
+
+  /* ==========================================================================
+     5. 账号：注册、登录、会话
+     ========================================================================== */
+  let session = readJSON(STORAGE_KEYS.session, null);
+
+  function currentAccount() {
+    if (!session || typeof session !== "object" || !session.username) return null;
+    const accounts = loadAccounts();
+    return accounts[normalizeUsername(session.username)] || null;
+  }
+  function startSession(username) {
+    session = { username: String(username), at: new Date().toISOString() };
+    writeJSON(STORAGE_KEYS.session, session);
+  }
+  function endSession() {
+    session = null;
+    try { localStorage.removeItem(STORAGE_KEYS.session); } catch (error) { /* ignore */ }
+  }
+
+  function registerAccount(username, password) {
+    const accounts = loadAccounts();
+    if (accountKeyExists(accounts, username)) {
+      return { ok: false, code: "duplicate" };
+    }
+    const salt = randomSalt();
+    const now = new Date().toISOString();
+    const account = {
+      username: String(username).trim(),
+      salt: salt,
+      iterations: HASH_ITERATIONS,
+      hash: hashPassword(password, salt),
+      createdAt: now,
+      lastLoginAt: now,
+      events: [
+        { type: "register", at: now },
+        { type: "login", at: now }
+      ]
+    };
+    accounts[normalizeUsername(username)] = account;
+    if (!saveAccounts(accounts)) {
+      return { ok: false, code: "storage" };
+    }
+    startSession(account.username);
+    return { ok: true, account: account };
+  }
+
+  function verifyCredentials(username, password) {
+    const accounts = loadAccounts();
+    const account = accounts[normalizeUsername(username)];
+    if (!account) return { ok: false, code: "credentials" };
+    const digest = hashPassword(password, account.salt, account.iterations || HASH_ITERATIONS);
+    if (digest !== account.hash) return { ok: false, code: "credentials" };
+
+    const now = new Date().toISOString();
+    account.lastLoginAt = now;
+    account.events = Array.isArray(account.events) ? account.events : [];
+    account.events.push({ type: "login", at: now });
+    if (account.events.length > 10) account.events = account.events.slice(-10);
+    accounts[normalizeUsername(username)] = account;
+    saveAccounts(accounts);
+    startSession(account.username);
+    return { ok: true, account: account };
+  }
+
+  /* ==========================================================================
+     6. 小工具
+     ========================================================================== */
+  function $(selector, root) { return (root || document).querySelector(selector); }
+  function $$(selector, root) {
+    return Array.prototype.slice.call((root || document).querySelectorAll(selector));
+  }
+  function setText(selector, value) {
+    $$(selector).forEach(function (node) { node.textContent = value; });
+  }
+  function icon(id, className) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("class", "octicon " + (className || ""));
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    use.setAttribute("href", "#" + id);
+    svg.appendChild(use);
+    return svg;
+  }
+  function formatDate(isoText) {
+    if (!isoText) return "—";
+    const date = new Date(isoText);
+    if (isNaN(date.getTime())) return "—";
+    return new Intl.DateTimeFormat("zh-CN", {
+      year: "numeric", month: "long", day: "numeric",
+      hour: "2-digit", minute: "2-digit"
+    }).format(date);
+  }
+  function formatRelative(isoText) {
+    const then = new Date(isoText).getTime();
+    if (!isFinite(then)) return "";
+    const seconds = Math.round((then - Date.now()) / 1000);
+    const absolute = Math.abs(seconds);
+    if (absolute < 45) return "刚刚";
+    let formatter;
+    try {
+      formatter = new Intl.RelativeTimeFormat("zh-CN", { numeric: "auto" });
+    } catch (error) {
+      return formatDate(isoText);
+    }
+    if (absolute < 3600) return formatter.format(Math.round(seconds / 60), "minute");
+    if (absolute < 86400) return formatter.format(Math.round(seconds / 3600), "hour");
+    if (absolute < 2592000) return formatter.format(Math.round(seconds / 86400), "day");
+    if (absolute < 31536000) return formatter.format(Math.round(seconds / 2592000), "month");
+    return formatter.format(Math.round(seconds / 31536000), "year");
+  }
+  function isTypingTarget(target) {
+    if (!target || !target.tagName) return false;
+    const tag = target.tagName.toLowerCase();
+    return tag === "input" || tag === "textarea" || tag === "select" || target.isContentEditable;
+  }
+
+  let toastCount = 0;
+  function showToast(message, options) {
+    const region = $("#toast-region");
+    if (!region) return;
+    const settings = options || {};
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    toast.setAttribute("role", "status");
+    toast.style.zIndex = String(100 + (toastCount++ % 5));
+    toast.appendChild(icon(settings.icon || "i-info", "toast-icon"));
+    const text = document.createElement("span");
+    text.className = "toast-text";
+    text.textContent = message;
+    toast.appendChild(text);
+    region.appendChild(toast);
+    window.setTimeout(function () {
+      toast.classList.add("is-leaving");
+      window.setTimeout(function () { toast.remove(); }, 220);
+    }, settings.duration || 3600);
+  }
+
+  /* ==========================================================================
+     7. 主题
+     ========================================================================== */
+  function storedTheme() {
+    const value = safeRead(STORAGE_KEYS.theme, "");
+    return value === "light" || value === "dark" ? value : "";
+  }
+  function systemTheme() {
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  function applyTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    document.documentElement.style.colorScheme = theme;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", theme === "dark" ? "#0d1117" : "#f6f8fa");
+    $$("[data-theme-toggle]").forEach(function (button) {
+      const label = theme === "dark" ? "切换到浅色主题" : "切换到深色主题";
+      button.setAttribute("aria-label", label);
+      button.setAttribute("title", label);
+      button.setAttribute("aria-pressed", theme === "dark" ? "true" : "false");
+    });
+  }
+  function toggleTheme() {
+    const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    applyTheme(next);
+    safeWrite(STORAGE_KEYS.theme, next);
+  }
+  function initTheme() {
+    applyTheme(storedTheme() || systemTheme());
+    if (window.matchMedia) {
+      const media = window.matchMedia("(prefers-color-scheme: dark)");
+      const onChange = function () {
+        if (!storedTheme()) applyTheme(systemTheme());
+      };
+      if (typeof media.addEventListener === "function") media.addEventListener("change", onChange);
+      else if (typeof media.addListener === "function") media.addListener(onChange);
+    }
+    $$("[data-theme-toggle]").forEach(function (button) {
+      button.addEventListener("click", toggleTheme);
+    });
+  }
+
+  /* ==========================================================================
+     8. 表单错误状态
+     ========================================================================== */
+  function showFieldError(input, message) {
+    if (!input) return;
+    const group = input.closest(".form-group");
+    if (!group) return;
+    const error = group.querySelector(".field-error");
+    group.classList.add("has-error");
+    input.setAttribute("aria-invalid", "true");
+    if (error) {
+      if (!error.id) error.id = (input.id || "field") + "-error";
+      error.textContent = message;
+      error.hidden = false;
+      input.setAttribute("aria-describedby", error.id);
+    }
+  }
+  function clearFieldError(group) {
+    if (!group) return;
+    group.classList.remove("has-error");
+    const input = group.querySelector(".input");
+    const error = group.querySelector(".field-error");
+    if (input) {
+      input.removeAttribute("aria-invalid");
+      input.removeAttribute("aria-describedby");
+    }
+    if (error) {
+      error.hidden = true;
+      error.textContent = "";
+    }
+  }
+  function clearFormErrors(form) {
+    if (!form) return;
+    $$(".form-group", form).forEach(clearFieldError);
+    const card = form.closest(".auth-card");
+    const alert = card ? card.querySelector(".alert") : null;
+    if (alert) alert.hidden = true;
+  }
+  function showFormAlert(alertElement, message) {
+    if (!alertElement) return;
+    alertElement.hidden = false;
+    const text = alertElement.querySelector(".alert-text");
+    if (text) text.textContent = message;
+  }
+  function setBusy(button, busy, busyLabel) {
+    if (!button) return;
+    button.disabled = busy;
+    button.classList.toggle("is-busy", busy);
+    const spinner = button.querySelector(".spinner");
+    if (spinner) spinner.hidden = !busy;
+    const label = button.querySelector(".btn-text");
+    if (!label) return;
+    if (busy) {
+      button.dataset.idleLabel = button.dataset.idleLabel || label.textContent;
+      label.textContent = busyLabel || "请稍候…";
+    } else if (button.dataset.idleLabel) {
+      label.textContent = button.dataset.idleLabel;
+    }
+  }
+
+  /* ==========================================================================
+     9. 密码显示切换 / 强度反馈
+     ========================================================================== */
+  function bindPasswordToggles() {
+    $$("[data-toggle-password]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        const input = document.getElementById(button.getAttribute("data-toggle-password"));
+        if (!input) return;
+        const visible = input.type === "text";
+        input.type = visible ? "password" : "text";
+        button.setAttribute("aria-pressed", visible ? "false" : "true");
+        button.setAttribute("aria-label", visible ? "显示密码" : "隐藏密码");
+        input.focus();
+      });
+    });
+  }
+
+  function updatePasswordFeedback() {
+    const input = $("#signup-password");
+    if (!input) return;
+    const password = input.value;
+    const issues = passwordIssues(password);
+    const satisfied = ["length", "upper", "lower", "digit"].filter(function (key) { return issues[key]; }).length;
+    const hasValue = password.length > 0;
+
+    $$("#signup-rules .rule").forEach(function (rule) {
+      const key = rule.getAttribute("data-rule");
+      const ok = !!issues[key];
+      rule.classList.toggle("is-ok", ok);
+      rule.classList.toggle("is-bad", hasValue && !ok);
+      const state = rule.querySelector(".rule-state");
+      if (state) state.textContent = ok ? "✓" : (hasValue ? "✕" : "•");
+    });
+
+    const strength = $("#signup-strength");
+    const label = $("#signup-strength-label");
+    if (strength) {
+      strength.querySelectorAll(".strength-bar").forEach(function (bar, index) {
+        bar.classList.toggle("is-filled", index < satisfied);
+      });
+    }
+
+    let state = "idle";
+    let text = "请设置 6–30 位密码，需包含大写字母、小写字母和数字。";
+    if (hasValue) {
+      if (satisfied === 4) { state = "strong"; text = "密码强度：强"; }
+      else if (satisfied === 3) { state = "good"; text = "密码强度：较强"; }
+      else if (satisfied === 2) { state = "fair"; text = "密码强度：一般"; }
+      else { state = "weak"; text = "密码强度：弱"; }
+    }
+    if (strength) strength.setAttribute("data-state", state);
+    if (label) {
+      label.setAttribute("data-state", state);
+      label.textContent = text;
+    }
+  }
+
+  /* ==========================================================================
+     10. 表单提交
+     ========================================================================== */
+  function handleSignIn(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    clearFormErrors(form);
+    const usernameInput = $("#signin-username");
+    const passwordInput = $("#signin-password");
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value;
+    let firstInvalid = null;
+
+    if (!username) {
+      showFieldError(usernameInput, "请输入用户名。");
+      firstInvalid = firstInvalid || usernameInput;
+    }
+    if (!password) {
+      showFieldError(passwordInput, "请输入密码。");
+      firstInvalid = firstInvalid || passwordInput;
+    }
+    if (firstInvalid) {
+      firstInvalid.focus();
+      return;
+    }
+
+    const button = $("#signin-submit");
+    setBusy(button, true, "正在登录…");
+    window.setTimeout(function () {
+      const result = verifyCredentials(username, password);
+      if (!result.ok) {
+        setBusy(button, false);
+        showFormAlert($("#signin-alert"), "用户名或密码不正确。");
+        passwordInput.value = "";
+        clearFieldError(passwordInput.closest(".form-group"));
+        passwordInput.focus();
+        return;
+      }
+      setBusy(button, false);
+      form.reset();
+      clearFormErrors(form);
+      currentTab = "overview";
+      showToast("欢迎回来，" + result.account.username, { icon: "i-check" });
+      navigate("home");
+    }, 280);
+  }
+
+  function handleSignUp(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    clearFormErrors(form);
+    const usernameInput = $("#signup-username");
+    const passwordInput = $("#signup-password");
+    const confirmInput = $("#signup-confirm");
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value;
+    const confirmation = confirmInput.value;
+    let firstInvalid = null;
+
+    const nameProblem = usernameProblem(username);
+    if (nameProblem) {
+      showFieldError(usernameInput, nameProblem);
+      firstInvalid = firstInvalid || usernameInput;
+    } else if (accountKeyExists(loadAccounts(), username)) {
+      showFieldError(usernameInput, "该用户名已被注册，请换一个。");
+      firstInvalid = firstInvalid || usernameInput;
+    }
+
+    if (!password) {
+      showFieldError(passwordInput, "请输入密码。");
+      firstInvalid = firstInvalid || passwordInput;
+    } else if (!passwordIsValid(password)) {
+      showFieldError(passwordInput, "密码长度需为 6–30 位，且包含大写字母、小写字母和数字。");
+      firstInvalid = firstInvalid || passwordInput;
+    }
+
+    if (!confirmation) {
+      showFieldError(confirmInput, "请再次输入密码。");
+      firstInvalid = firstInvalid || confirmInput;
+    } else if (confirmation !== password) {
+      showFieldError(confirmInput, "两次输入的密码不一致。");
+      firstInvalid = firstInvalid || confirmInput;
+    }
+
+    updatePasswordFeedback();
+    if (firstInvalid) {
+      firstInvalid.focus();
+      return;
+    }
+
+    const button = $("#signup-submit");
+    setBusy(button, true, "正在创建账号…");
+    window.setTimeout(function () {
+      const result = registerAccount(username, password);
+      setBusy(button, false);
+      if (!result.ok) {
+        if (result.code === "duplicate") {
+          showFieldError(usernameInput, "该用户名已被注册，请换一个。");
+          usernameInput.focus();
+        } else {
+          showFormAlert($("#signup-alert"), "账号保存失败：浏览器本地存储不可用或已满。");
+        }
+        return;
+      }
+      form.reset();
+      clearFormErrors(form);
+      updatePasswordFeedback();
+      currentTab = "overview";
+      showToast("账号创建成功，欢迎你，" + result.account.username, { icon: "i-check" });
+      navigate("home");
+    }, 320);
+  }
+
+  function bindAuthForms() {
+    const signInForm = $("#signin-form");
+    const signUpForm = $("#signup-form");
+    if (signInForm) signInForm.addEventListener("submit", handleSignIn);
+    if (signUpForm) signUpForm.addEventListener("submit", handleSignUp);
+
+    $$(".input").forEach(function (input) {
+      input.addEventListener("input", function () {
+        clearFieldError(input.closest(".form-group"));
+      });
+    });
+
+    const signUpUsername = $("#signup-username");
+    if (signUpUsername) {
+      signUpUsername.addEventListener("blur", function () {
+        const value = signUpUsername.value.trim();
+        if (!value || usernameProblem(value)) return;
+        if (accountKeyExists(loadAccounts(), value)) {
+          showFieldError(signUpUsername, "该用户名已被注册，请换一个。");
+        }
+      });
+    }
+
+    const signUpPassword = $("#signup-password");
+    if (signUpPassword) {
+      signUpPassword.addEventListener("input", function () {
+        updatePasswordFeedback();
+        const confirm = $("#signup-confirm");
+        if (confirm && confirm.value) {
+          if (confirm.value === signUpPassword.value) clearFieldError(confirm.closest(".form-group"));
+        }
+      });
+    }
+
+    const signUpConfirm = $("#signup-confirm");
+    if (signUpConfirm) {
+      signUpConfirm.addEventListener("input", function () {
+        const password = $("#signup-password").value;
+        if (signUpConfirm.value && signUpConfirm.value !== password) {
+          showFieldError(signUpConfirm, "两次输入的密码不一致。");
+        } else {
+          clearFieldError(signUpConfirm.closest(".form-group"));
+        }
+      });
+    }
+
+    bindPasswordToggles();
+  }
+
+  /* ==========================================================================
+     11. 路由与视图
+     ========================================================================== */
+  const authView = $("#auth-view");
+  const homeView = $("#home-view");
+  const panels = { signin: $("#panel-signin"), signup: $("#panel-signup") };
+  let lastRoute = "";
+  let currentTab = "overview";
+
+  function resolveRoute() {
+    const raw = (location.hash || "").replace(/^#\/?/, "").toLowerCase();
+    if (raw === "signup" || raw === "register") return "signup";
+    if (raw === "home" || raw === "profile") return "home";
+    return "signin";
+  }
+  function navigate(route) {
+    const target = "#/" + route;
+    if (location.hash === target) renderRoute();
+    else location.hash = target;
+  }
+  function resetAuthForms() {
+    const signInForm = $("#signin-form");
+    const signUpForm = $("#signup-form");
+    if (signInForm) { signInForm.reset(); clearFormErrors(signInForm); }
+    if (signUpForm) { signUpForm.reset(); clearFormErrors(signUpForm); }
+    updatePasswordFeedback();
+  }
+  function renderRoute() {
+    const account = currentAccount();
+    const route = resolveRoute();
+
+    if (!account && route === "home") { location.replace("#/signin"); return; }
+    if (account && route !== "home") { location.replace("#/home"); return; }
+
+    if (route === "home") {
+      authView.hidden = true;
+      homeView.hidden = false;
+      if (lastRoute !== "home") resetAuthForms();
+      renderProfile(account);
+      switchTab(currentTab, true);
+      if (lastRoute !== "home") window.scrollTo(0, 0);
+      document.title = PROFILE.handle + " · 个人主页";
+    } else {
+      homeView.hidden = true;
+      authView.hidden = false;
+      panels.signin.hidden = route !== "signin";
+      panels.signup.hidden = route !== "signup";
+      if (lastRoute === "home" || (lastRoute && lastRoute !== route)) resetAuthForms();
+      document.title = route === "signup" ? "注册账号 · 个人网站" : "登录 · 个人网站";
+      if (route === "signup") updatePasswordFeedback();
+    }
+    lastRoute = route;
+  }
+
+  /* ==========================================================================
+     12. 个人主页渲染
+     ========================================================================== */
+  function contactEntries() {
+    const entries = [];
+    if (PROFILE.website) {
+      entries.push({
+        icon: "i-globe",
+        text: PROFILE.website.replace(/^https?:\/\//, "").replace(/\/$/, ""),
+        href: PROFILE.website
+      });
+    }
+    if (PROFILE.github) {
+      entries.push({ icon: "i-code", text: "github.com/" + PROFILE.handle, href: PROFILE.github });
+    }
+    if (PROFILE.location) entries.push({ icon: "i-location", text: PROFILE.location });
+    if (PROFILE.email) entries.push({ icon: "i-mail", text: PROFILE.email, href: "mailto:" + PROFILE.email });
+    return entries;
+  }
+  function renderContactLists() {
+    const entries = contactEntries();
+    $$("[data-contact-list]").forEach(function (list) {
+      list.textContent = "";
+      entries.forEach(function (entry) {
+        const item = document.createElement("li");
+        item.className = "contact-item";
+        item.appendChild(icon(entry.icon));
+        if (entry.href) {
+          const link = document.createElement("a");
+          link.textContent = entry.text;
+          link.href = entry.href;
+          if (/^https?:/i.test(entry.href)) {
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+          }
+          item.appendChild(link);
+        } else {
+          const span = document.createElement("span");
+          span.textContent = entry.text;
+          item.appendChild(span);
+        }
+        list.appendChild(item);
+      });
+    });
+  }
+  function renderSkills() {
+    const skills = Array.isArray(PROFILE.skills) ? PROFILE.skills : [];
+    $$("[data-profile-skills]").forEach(function (list) {
+      list.textContent = "";
+      skills.forEach(function (skill) {
+        const item = document.createElement("li");
+        item.className = "chip";
+        item.textContent = skill;
+        list.appendChild(item);
+      });
+    });
+  }
+  function createProjectCard(project) {
+    const card = document.createElement("article");
+    card.className = "repo-card";
+
+    const head = document.createElement("div");
+    head.className = "repo-card-head";
+    head.appendChild(icon("i-repo"));
+    const name = document.createElement("a");
+    name.className = "repo-name";
+    name.textContent = project.name || "untitled";
+    name.href = project.url || PROFILE.github || "#";
+    name.target = "_blank";
+    name.rel = "noopener noreferrer";
+    head.appendChild(name);
+    const badge = document.createElement("span");
+    badge.className = "repo-badge";
+    badge.textContent = "公开";
+    head.appendChild(badge);
+    card.appendChild(head);
+
+    if (project.desc) {
+      const description = document.createElement("p");
+      description.className = "repo-desc";
+      description.textContent = project.desc;
+      card.appendChild(description);
+    }
+
+    const foot = document.createElement("div");
+    foot.className = "repo-foot";
+    const language = document.createElement("span");
+    language.className = "repo-lang";
+    const dot = document.createElement("span");
+    dot.className = "lang-dot";
+    dot.style.background = project.languageColor || "#8b949e";
+    language.appendChild(dot);
+    const languageText = document.createElement("span");
+    languageText.textContent = project.language || "Text";
+    language.appendChild(languageText);
+    foot.appendChild(language);
+
+    const link = document.createElement("a");
+    link.className = "repo-link";
+    link.textContent = "在 GitHub 查看";
+    link.href = project.url || PROFILE.github || "#";
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    foot.appendChild(link);
+    card.appendChild(foot);
+    return card;
+  }
+  function createAddProjectCard() {
+    const button = document.createElement("button");
+    button.className = "add-card";
+    button.type = "button";
+    button.setAttribute("data-action", "customize");
+    const plus = icon("i-plus");
+    plus.style.width = "18px";
+    plus.style.height = "18px";
+    button.appendChild(plus);
+    const label = document.createElement("span");
+    label.textContent = "添加项目";
+    button.appendChild(label);
+    const hint = document.createElement("span");
+    hint.className = "hint";
+    hint.style.margin = "0";
+    hint.textContent = "在 index.html 的 PROFILE.projects 中填写";
+    button.appendChild(hint);
+    return button;
+  }
+  function renderProjects() {
+    const projects = Array.isArray(PROFILE.projects) ? PROFILE.projects : [];
+    $$("[data-project-list]").forEach(function (container) {
+      const mode = container.getAttribute("data-project-list");
+      container.textContent = "";
+      const items = mode === "featured" ? projects.slice(0, 2) : projects;
+      items.forEach(function (project) {
+        container.appendChild(createProjectCard(project));
+      });
+      container.appendChild(createAddProjectCard());
+    });
+    setText("[data-project-count]", String(projects.length));
+    setText("[data-project-count-label]", projects.length + " 个");
+  }
+  function renderActivity(account) {
+    const list = $("#account-events");
+    if (!list) return;
+    list.textContent = "";
+    const events = (Array.isArray(account.events) ? account.events : []).slice(-5).reverse();
+    if (!events.length) {
+      const item = document.createElement("li");
+      item.className = "activity-item";
+      const text = document.createElement("span");
+      text.className = "activity-text";
+      text.textContent = "暂无记录";
+      item.appendChild(text);
+      list.appendChild(item);
+      return;
+    }
+    events.forEach(function (event) {
+      const item = document.createElement("li");
+      item.className = "activity-item";
+      const dot = document.createElement("span");
+      dot.className = "activity-dot";
+      const text = document.createElement("span");
+      text.className = "activity-text";
+      text.textContent = event.type === "register" ? "创建账号" : "登录";
+      const time = document.createElement("time");
+      time.className = "activity-time";
+      time.dateTime = event.at;
+      time.textContent = formatRelative(event.at);
+      item.appendChild(dot);
+      item.appendChild(text);
+      item.appendChild(time);
+      list.appendChild(item);
+    });
+  }
+  function renderProfile(account) {
+    if (!account) return;
+    setText("[data-profile-name]", "@" + PROFILE.handle);
+    setText("[data-profile-bio]", PROFILE.bio);
+    setText("[data-account-handle]", "@" + account.username);
+    setText("[data-account-created]", formatDate(account.createdAt));
+    setText("[data-account-lastlogin]", formatDate(account.lastLoginAt));
+    setText("[data-year]", String(new Date().getFullYear()));
+    renderContactLists();
+    renderSkills();
+    renderProjects();
+    renderActivity(account);
+  }
+
+  /* ==========================================================================
+     13. 登录后的交互：标签页 / 菜单 / 弹层 / 快捷键
+     ========================================================================== */
+  const VALID_TABS = ["overview", "projects", "about"];
+
+  function switchTab(tab, keepScroll) {
+    if (VALID_TABS.indexOf(tab) === -1) tab = "overview";
+    currentTab = tab;
+    $$(".profile-tab").forEach(function (button) {
+      const selected = button.getAttribute("data-tab") === tab;
+      button.setAttribute("aria-selected", selected ? "true" : "false");
+      button.tabIndex = selected ? 0 : -1;
+    });
+    $$(".tab-panel").forEach(function (panel) {
+      panel.hidden = panel.id !== "panel-" + tab;
+    });
+    $$("[data-tab-link]").forEach(function (link) {
+      link.classList.toggle("is-active", link.getAttribute("data-tab-link") === tab);
+    });
+    if (!keepScroll) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  function closeUserMenu() {
+    const dropdown = $("#user-dropdown");
+    const trigger = $("#user-menu-trigger");
+    if (dropdown) dropdown.hidden = true;
+    if (trigger) trigger.setAttribute("aria-expanded", "false");
+  }
+  function toggleUserMenu() {
+    const dropdown = $("#user-dropdown");
+    const trigger = $("#user-menu-trigger");
+    if (!dropdown || !trigger) return;
+    const willOpen = dropdown.hidden;
+    dropdown.hidden = !willOpen;
+    trigger.setAttribute("aria-expanded", willOpen ? "true" : "false");
+    if (willOpen) {
+      const firstItem = dropdown.querySelector(".dropdown-item");
+      if (firstItem) firstItem.focus();
+    }
+  }
+
+  function handleLogout() {
+    endSession();
+    closeUserMenu();
+    currentTab = "overview";
+    lastRoute = "home";
+    navigate("signin");
+    showToast("已退出登录。");
+  }
+
+  async function copyPageLink() {
+    const url = location.href.split("#")[0];
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast("主页链接已复制到剪贴板。", { icon: "i-check" });
+    } catch (error) {
+      const helper = document.createElement("textarea");
+      helper.value = url;
+      helper.style.position = "fixed";
+      helper.style.opacity = "0";
+      document.body.appendChild(helper);
+      helper.select();
+      let copied = false;
+      try { copied = document.execCommand("copy"); } catch (copyError) { copied = false; }
+      helper.remove();
+      showToast(copied ? "主页链接已复制。" : "复制失败，请手动复制地址栏中的链接。");
+    }
+  }
+
+  function openDialog(id) {
+    const dialog = document.getElementById(id);
+    if (!dialog) return;
+    if (typeof dialog.showModal === "function") dialog.showModal();
+    else dialog.setAttribute("open", "");
+  }
+  function bindDialogs() {
+    $$("[data-dialog-open]").forEach(function (button) {
+      button.addEventListener("click", function (event) {
+        if (button.tagName === "A") event.preventDefault();
+        openDialog(button.getAttribute("data-dialog-open"));
+      });
+    });
+    $$("dialog.gh-dialog").forEach(function (dialog) {
+      dialog.addEventListener("click", function (event) {
+        if (event.target === dialog) dialog.close();
+      });
+      $$("[data-dialog-close]", dialog).forEach(function (button) {
+        button.addEventListener("click", function () { dialog.close(); });
+      });
+    });
+  }
+
+  function bindHeaderEvents() {
+    const trigger = $("#user-menu-trigger");
+    if (trigger) trigger.addEventListener("click", function (event) {
+      event.stopPropagation();
+      toggleUserMenu();
+    });
+
+    const dropdown = $("#user-dropdown");
+    if (dropdown) {
+      $$(".dropdown-item", dropdown).forEach(function (item) {
+        item.addEventListener("click", function () { closeUserMenu(); });
+      });
+    }
+
+    document.addEventListener("click", function (event) {
+      const menu = $("#user-menu");
+      if (menu && !menu.contains(event.target)) closeUserMenu();
+    });
+
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") {
+        closeUserMenu();
+        const search = $("#site-search");
+        if (search && document.activeElement === search) search.blur();
+      }
+      if (event.key === "/" && !isTypingTarget(event.target) && homeView && !homeView.hidden) {
+        const search = $("#site-search");
+        if (search) {
+          event.preventDefault();
+          search.focus();
+        }
+      }
+    });
+
+    const search = $("#site-search");
+    if (search) {
+      search.addEventListener("keydown", function (event) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          showToast("搜索功能还没有接入，可以在 index.html 中接入站点搜索。");
+        }
+      });
+    }
+  }
+
+  function bindProfileEvents() {
+    $$(".profile-tab").forEach(function (button) {
+      button.addEventListener("click", function () {
+        switchTab(button.getAttribute("data-tab"));
+      });
+      button.addEventListener("keydown", function (event) {
+        const tabs = $$(".profile-tab");
+        const index = tabs.indexOf(button);
+        let nextIndex = -1;
+        if (event.key === "ArrowRight") nextIndex = (index + 1) % tabs.length;
+        else if (event.key === "ArrowLeft") nextIndex = (index - 1 + tabs.length) % tabs.length;
+        else if (event.key === "Home") nextIndex = 0;
+        else if (event.key === "End") nextIndex = tabs.length - 1;
+        if (nextIndex >= 0) {
+          event.preventDefault();
+          tabs[nextIndex].focus();
+          switchTab(tabs[nextIndex].getAttribute("data-tab"));
+        }
+      });
+    });
+
+    $$("[data-tab-link]").forEach(function (link) {
+      link.addEventListener("click", function (event) {
+        event.preventDefault();
+        switchTab(link.getAttribute("data-tab-link"));
+      });
+    });
+    $$("[data-tab-jump]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        switchTab(button.getAttribute("data-tab-jump"));
+      });
+    });
+
+    document.addEventListener("click", function (event) {
+      const target = event.target && event.target.closest ? event.target.closest("[data-action]") : null;
+      if (!target) return;
+      const action = target.getAttribute("data-action");
+      if (action === "logout") {
+        event.preventDefault();
+        handleLogout();
+      } else if (action === "customize") {
+        event.preventDefault();
+        closeUserMenu();
+        openDialog("customize-dialog");
+      } else if (action === "copy-link") {
+        event.preventDefault();
+        copyPageLink();
+      } else if (action === "back-to-top") {
+        event.preventDefault();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    });
+  }
+
+  /* ==========================================================================
+     14. 启动
+     ========================================================================== */
+  function init() {
+    initTheme();
+    bindAuthForms();
+    bindDialogs();
+    bindHeaderEvents();
+    bindProfileEvents();
+
+    if (!location.hash) {
+      location.replace("#/" + (currentAccount() ? "home" : "signin"));
+      return;
+    }
+    renderRoute();
+
+    window.addEventListener("hashchange", renderRoute);
+    window.addEventListener("storage", function (event) {
+      if (event.key === STORAGE_KEYS.session) location.reload();
+    });
+  }
+
+  init();
+})();
+</script>
 </body>
 </html>
